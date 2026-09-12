@@ -1,42 +1,86 @@
+@using Microsoft.JSInterop
 @inject IJSRuntime JSRuntime
 @implements IAsyncDisposable
 
-<input type="text" @ref="pickerElement" class="@CssClass" placeholder="@Placeholder" />
+<input type="text" 
+       @ref="inputRef" 
+       id="@Id"
+       class="@CssClass" 
+       placeholder="@Placeholder" 
+       value="@Value" />
 
 @code {
-    private ElementReference pickerElement;
+    private ElementReference inputRef;
     private IJSObjectReference? module;
     private DotNetObjectReference<PersianDatePicker>? dotNetHelper;
 
-    [Parameter] public string CssClass { get; set; } = "";
+    // پارامترهای عمومی واسه استایل و آیدی
+    [Parameter] public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    [Parameter] public string CssClass { get; set; } = "form-control";
     [Parameter] public string Placeholder { get; set; } = "انتخاب تاریخ...";
     
-    // رویدادی که توسعه‌دهنده C# به آن گوش می‌دهد
-    [Parameter] public EventCallback<string> DateChanged { get; set; }
+    // پارامترهای اصلی بایندینگ
+    // این دوتا با هم به کاربر اجازه میدن بنویسه: @bind-Value="myDate"
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
 
+    // تنظیمات تقویم (میتونی هرچی کانفیگ داری اینجا اضافه کنی)
+    [Parameter] public string Format { get; set; } = "YYYY/MM/DD";
+    [Parameter] public string? MinDate { get; set; }
+    [Parameter] public string? MaxDate { get; set; }
+    
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            // لود کردن فایل جاوا اسکریپت واسط که در قدم سوم ساختیم
-            module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/PersianDatePicker.Blazor/js/datepicker-interop.js");
-            dotNetHelper = DotNetObjectReference.Create(this);
-            
-            // فراخوانی تابع init در جاوا اسکریپت
-            await module.InvokeVoidAsync("initDatePicker", pickerElement, dotNetHelper, new { /* آپشن‌های دلخواه */ });
+            try
+            {
+                // لود کردن فایل جاوا اسکریپت از wwwroot خودِ پکیج
+                module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/PersianDatePicker.Blazor/js/datepicker-interop.js");
+                dotNetHelper = DotNetObjectReference.Create(this);
+                
+                // پکیج کردن تنظیمات برای ارسال به JS
+                var options = new 
+                {
+                    format = Format,
+                    minDate = MinDate,
+                    maxDate = MaxDate,
+                    initialValue = Value
+                };
+
+                await module.InvokeVoidAsync("init", inputRef, dotNetHelper, options);
+            }
+            catch (Exception ex)
+            {
+                // اگه JS لود نشه اینجا ارور میده
+                Console.WriteLine($"خطا در لود فایل JS تقویم: {ex.Message}");
+            }
         }
     }
 
-    // این متد توسط جاوا اسکریپت فراخوانی می‌شود
+    // این متد مستقیم از تو جاوا اسکریپت (onSelect) کال میشه
     [JSInvokable]
-    public async Task OnDateSelected(string date)
+    public async Task OnDateChanged(string selectedDate)
     {
-        await DateChanged.InvokeAsync(date);
+        if (Value != selectedDate)
+        {
+            Value = selectedDate;
+            await ValueChanged.InvokeAsync(selectedDate);
+        }
     }
 
     public async ValueTask DisposeAsync()
     {
+        // وقتی کامپوننت از صفحه حذف میشه، ریسورس‌ها رو آزاد میکنیم
+        if (module is not null)
+        {
+            try 
+            {
+                await module.InvokeVoidAsync("destroy", inputRef);
+                await module.DisposeAsync();
+            }
+            catch { /* تو بعضی سناریوها ران‌تایم زودتر بسته میشه */ }
+        }
         dotNetHelper?.Dispose();
-        if (module is not null) await module.DisposeAsync();
     }
 }

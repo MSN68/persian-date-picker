@@ -1,0 +1,42 @@
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
+
+<input type="text" @ref="pickerElement" class="@CssClass" placeholder="@Placeholder" />
+
+@code {
+    private ElementReference pickerElement;
+    private IJSObjectReference? module;
+    private DotNetObjectReference<PersianDatePicker>? dotNetHelper;
+
+    [Parameter] public string CssClass { get; set; } = "";
+    [Parameter] public string Placeholder { get; set; } = "انتخاب تاریخ...";
+    
+    // رویدادی که توسعه‌دهنده C# به آن گوش می‌دهد
+    [Parameter] public EventCallback<string> DateChanged { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // لود کردن فایل جاوا اسکریپت واسط که در قدم سوم ساختیم
+            module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/PersianDatePicker.Blazor/js/datepicker-interop.js");
+            dotNetHelper = DotNetObjectReference.Create(this);
+            
+            // فراخوانی تابع init در جاوا اسکریپت
+            await module.InvokeVoidAsync("initDatePicker", pickerElement, dotNetHelper, new { /* آپشن‌های دلخواه */ });
+        }
+    }
+
+    // این متد توسط جاوا اسکریپت فراخوانی می‌شود
+    [JSInvokable]
+    public async Task OnDateSelected(string date)
+    {
+        await DateChanged.InvokeAsync(date);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        dotNetHelper?.Dispose();
+        if (module is not null) await module.DisposeAsync();
+    }
+}

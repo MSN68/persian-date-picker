@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "dgSpecHash": "zxtKpn21AA4=",
+  "success": false,
+  "projectFilePath": "D:\\source\\repos\\persian-date-picker\\PersianDatePicker.Blazor\\PersianDatePicker.Blazor.csproj",
+  "expectedPackageFiles": [],
+  "logs": [
+    {
+      "code": "NU1101",
+      "level": "Error",
+      "message": "Unable to find package Microsoft.AspNetCore.Components.Web. No packages exist with this id in source(s): C:\\Program Files\\dotnet\\library-packs, Microsoft Visual Studio Offline Packages",
+      "projectPath": "D:\\source\\repos\\persian-date-picker\\PersianDatePicker.Blazor\\PersianDatePicker.Blazor.csproj",
+      "filePath": "D:\\source\\repos\\persian-date-picker\\PersianDatePicker.Blazor\\PersianDatePicker.Blazor.csproj",
+      "libraryId": "Microsoft.AspNetCore.Components.Web",
+      "targetGraphs": [
+        "net10.0"
+      ]
+    }
+  ]
+}

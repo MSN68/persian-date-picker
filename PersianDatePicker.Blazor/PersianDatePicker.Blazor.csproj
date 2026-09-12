@@ -4,6 +4,17 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- تنظیمات نوگت -->
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>HosseinVatankhah.PersianDatePicker.Blazor</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Hossein Vatankhah</Authors>
+    <Description>A lightweight and powerful Persian (Jalali) Datepicker component for Blazor WebAssembly and Server.</Description>
+    <PackageTags>blazor;datepicker;persian;jalali;shamsi;calendar</PackageTags>
+    <PackageProjectUrl>https://github.com/hosseinvatankhah0/persian-date-picker</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/hosseinvatankhah0/persian-date-picker</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
 

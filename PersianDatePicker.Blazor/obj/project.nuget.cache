@@ -1,20 +1,28 @@
 {
   "version": 2,
-  "dgSpecHash": "zxtKpn21AA4=",
-  "success": false,
+  "dgSpecHash": "+F9VouP1d48=",
+  "success": true,
   "projectFilePath": "D:\\source\\repos\\persian-date-picker\\PersianDatePicker.Blazor\\PersianDatePicker.Blazor.csproj",
-  "expectedPackageFiles": [],
-  "logs": [
-    {
-      "code": "NU1101",
-      "level": "Error",
-      "message": "Unable to find package Microsoft.AspNetCore.Components.Web. No packages exist with this id in source(s): C:\\Program Files\\dotnet\\library-packs, Microsoft Visual Studio Offline Packages",
-      "projectPath": "D:\\source\\repos\\persian-date-picker\\PersianDatePicker.Blazor\\PersianDatePicker.Blazor.csproj",
-      "filePath": "D:\\source\\repos\\persian-date-picker\\PersianDatePicker.Blazor\\PersianDatePicker.Blazor.csproj",
-      "libraryId": "Microsoft.AspNetCore.Components.Web",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    }
-  ]
+  "expectedPackageFiles": [
+    "C:\\Users\\MSN\\.nuget\\packages\\microsoft.aspnetcore.authorization\\10.0.10\\microsoft.aspnetcore.authorization.10.0.10.nupkg.sha512",
+    "C:\\Users\\MSN\\.nuget\\packages\\microsoft.aspnetcore.components\\10.0.10\\microsoft.aspnetcore.components.10.0.10.nupkg.sha512",
+    "C:\\Users\\MSN\\.nuget\\packages\\microsoft.aspnetcore.components.analyzers\\10.0.10\\microsoft.aspnetcore.components.analyzers.10.0.10.nupkg.sha512",
+    "C:\\Users\\MSN\\.nuget\\packages\\microsoft.aspnetcore.components.forms\\10.0.10\\microsoft.aspnetcore.components.forms.10.0.10.nupkg.sha512",
+    "C:\\Users\\MSN\\.nuget\\packages\\microsoft.aspnetcore.components.web\\10.0.10\\microsoft.aspnetcore.components.web.10.0.10.nupkg.sha512",
+    "C:\\Users\\MSN\\.nuget\\packages\\microsoft.aspnetcore.metadata\\10.0.10\\microsoft.aspnetcore.metadata.10.0.10.nupkg.sha512",
+    "C:\\Users\\MSN\\.nuget\\packages\\microsoft.extensions.configuration\\10.0.10\\microsoft.extensions.configuration.10.0.10.nupkg.sha512",
+    "C:\\Users\\MSN\\.nuget\\packages\\microsoft.extensions.configuration.abstractions\\10.0.10\\microsoft.extensions.configuration.abstractions.10.0.10.nupkg.sha512",
+    "C:\\Users\\MSN\\.nuget\\packages\\microsoft.extensions.configuration.binder\\10.0.10\\microsoft.extensions.configuration.binder.10.0.10.nupkg.sha512",
+    "C:\\Users\\MSN\\.nuget\\packages\\microsoft.extensions.dependencyinjection\\10.0.10\\microsoft.extensions.dependencyinjection.10.0.10.nupkg.sha512",
+    "C:\\Users\\MSN\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\10.0.10\\microsoft.extensions.dependencyinjection.abstractions.10.0.10.nupkg.sha512",
+    "C:\\Users\\MSN\\.nuget\\packages\\microsoft.extensions.diagnostics\\10.0.10\\microsoft.extensions.diagnostics.10.0.10.nupkg.sha512",
+    "C:\\Users\\MSN\\.nuget\\packages\\microsoft.extensions.diagnostics.abstractions\\10.0.10\\microsoft.extensions.diagnostics.abstractions.10.0.10.nupkg.sha512",
+    "C:\\Users\\MSN\\.nuget\\packages\\microsoft.extensions.logging.abstractions\\10.0.10\\microsoft.extensions.logging.abstractions.10.0.10.nupkg.sha512",
+    "C:\\Users\\MSN\\.nuget\\packages\\microsoft.extensions.options\\10.0.10\\microsoft.extensions.options.10.0.10.nupkg.sha512",
+    "C:\\Users\\MSN\\.nuget\\packages\\microsoft.extensions.options.configurationextensions\\10.0.10\\microsoft.extensions.options.configurationextensions.10.0.10.nupkg.sha512",
+    "C:\\Users\\MSN\\.nuget\\packages\\microsoft.extensions.primitives\\10.0.10\\microsoft.extensions.primitives.10.0.10.nupkg.sha512",
+    "C:\\Users\\MSN\\.nuget\\packages\\microsoft.extensions.validation\\10.0.10\\microsoft.extensions.validation.10.0.10.nupkg.sha512",
+    "C:\\Users\\MSN\\.nuget\\packages\\microsoft.jsinterop\\10.0.10\\microsoft.jsinterop.10.0.10.nupkg.sha512"
+  ],
+  "logs": []
 }

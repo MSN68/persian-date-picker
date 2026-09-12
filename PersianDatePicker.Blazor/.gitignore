@@ -1,0 +1,41 @@
+# Binaries
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio / Rider / Editor folders
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.dbmdl
+*.jfm
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+
+# Mac
+.DS_Store
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]inaries/
+*.aps
+*.aps
+*.vbw
+
+# Others
+*.log
+*.cache
+*.tmp
+*.bak
+*.swp
+```eof

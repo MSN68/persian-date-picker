@@ -8,7 +8,7 @@
       "version": "1.0.0",
       "restore": {
         "projectUniqueName": "D:\\source\\repos\\persian-date-picker\\PersianDatePicker.Blazor\\PersianDatePicker.Blazor.csproj",
-        "projectName": "PersianDatePicker.Blazor",
+        "projectName": "HosseinVatankhah.PersianDatePicker.Blazor",
         "projectPath": "D:\\source\\repos\\persian-date-picker\\PersianDatePicker.Blazor\\PersianDatePicker.Blazor.csproj",
         "packagesPath": "C:\\Users\\MSN\\.nuget\\packages\\",
         "outputPath": "D:\\source\\repos\\persian-date-picker\\PersianDatePicker.Blazor\\obj\\",
@@ -26,7 +26,8 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {}
+          "C:\\Program Files\\dotnet\\library-packs": {},
+          "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net10.0": {
@@ -45,7 +46,7 @@
           "auditLevel": "low",
           "auditMode": "all"
         },
-        "SdkAnalysisLevel": "10.0.300"
+        "SdkAnalysisLevel": "10.0.400"
       },
       "frameworks": {
         "net10.0": {
@@ -73,7 +74,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.302/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.401/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.CSharp": "(,4.7.32767]",
             "Microsoft.VisualBasic": "(,10.4.32767]",

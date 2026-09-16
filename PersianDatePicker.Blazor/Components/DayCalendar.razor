@@ -1,0 +1,287 @@
+@using Microsoft.JSInterop
+@using global::PersianDatePicker.Blazor.Models
+@using global::PersianDatePicker.Blazor.Services
+@using global::PersianDatePicker.Blazor.Text
+
+@inject IJSRuntime JS
+
+@{
+    var locale = Config.Locale;
+    var fa = Localizer.IsPersian(locale);
+    var isRange = Config.SelectionMode == SelectionMode.Range;
+    var service = DayService;
+    var cells = service.GenerateMonthArray(View, Selected);
+    var weeks = cells
+        .Select((c, i) => (cell: c, weekIndex: i / 7))
+        .GroupBy(x => x.weekIndex)
+        .Select(g => g.Select(x => x.cell).ToList())
+        .ToList();
+    var weekdays = service.GenerateWeekdays();
+    var tabbable = TabbableDate(weeks);
+}
+
+@if (SubMode == SubCalendarMode.Day)
+{
+    <div class="dp-day-calendar-container">
+        <CalendarNav Label="service.GetHeaderLabel(View)"
+                     IsLabelClickable="Config.EnableMonthSelector"
+                     ShowLeftNav="service.ShouldShowLeft(View)"
+                     ShowRightNav="service.ShouldShowRight(View)"
+                     ShowGoToCurrent="service.ShouldShowGoToCurrent()"
+                     Locale="locale"
+                     OnLeftNav="NavLeft"
+                     OnRightNav="NavRight"
+                     OnLabelClick="@(() => SubMode = SubCalendarMode.Month)"
+                     OnGoToCurrent="GoToCurrent" />
+
+        @if (isRange && Selected.Count == 1)
+        {
+            <p class="dp-range-hint" aria-live="polite">@Strings.DayRangeHint(locale)</p>
+        }
+
+        <div class="dp-calendar-wrapper @(Config.ShowNearMonthDays ? "" : "dp-hide-near-month") @(fa ? "rtl" : "") @(isRange ? "dp-range-mode" : "")"
+             @onmouseleave="ClearHover">
+            <div class="dp-weekdays">
+                @foreach (var wd in weekdays)
+                {
+                    <span class="dp-calendar-weekday">@Localizer.WeekdayShort(wd, locale)</span>
+                }
+            </div>
+
+            @for (var w = 0; w < weeks.Count; w++)
+            {
+                var row = weeks[w];
+                <div class="dp-calendar-week">
+                    @if (Config.ShowWeekNumbers)
+                    {
+                        <span class="dp-week-number">@(Localizer.ToPersianDigits(row[0].Date.IsoWeek.ToString()))</span>
+                    }
+                    @foreach (var day in row)
+                    {
+                        var targetTab = tabbable is { } t && day.Date.IsSame(t, JGranularity.Day) ? 0 : -1;
+                        <span class="dp-day-cell @DayClass(day)">
+                            <button type="button"
+                                    class="dp-calendar-day @DayClass(day)"
+                                    data-date="@Localizer.Format(day.Date, Config.Format, locale)"
+                                    aria-current="@(day.CurrentDay ? "date" : null)"
+                                    aria-label="@service.GetDayAriaLabel(day.Date)"
+                                    aria-pressed="@(day.Selected ? "true" : "false")"
+                                    tabindex="@targetTab"
+                                    disabled="@(day.Disabled ? true : null)"
+                                    @onclick="() => DayClicked(day)"
+                                    @onmouseover="() => DayHovered(day)"
+                                    @onfocus="() => DayHovered(day)"
+                                    @onkeydown="e => OnDayKeydown(day, e)">
+                                @service.GetDayBtnText(day.Date)
+                            </button>
+                        </span>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <MonthCalendar Config="Config"
+                   DisplayDate="View"
+                   Theme="Theme" />
+}
+
+@code {
+    private enum SubCalendarMode { Day, Month }
+
+    [Parameter] public PickerConfig Config { get; set; } = new();
+    [Parameter] public JDate? DisplayDate { get; set; }
+    [Parameter] public List<JDate> Selected { get; set; } = new();
+    [Parameter] public string? Theme { get; set; }
+    [Parameter] public EventCallback<JDate> OnSelect { get; set; }
+    [Parameter] public EventCallback OnGoToCurrent { get; set; }
+
+    private DayCalendarService DayService { get; set; } = new DayCalendarService(new PickerConfig());
+    private SubCalendarMode SubMode { get; set; } = SubCalendarMode.Day;
+    private JDate? _hovered;
+    private JDate? _focused;
+
+    // The calendar owns its currently-displayed month (Angular's current-date-view model),
+    // seeded from DisplayDate and re-seeded only when the host changes it.
+    private JDate _view = JDate.Today();
+    private JDate? _lastDisplay;
+    private bool _viewInited;
+    private JDate View => _view;
+
+    protected override void OnParametersSet()
+    {
+        DayService = new DayCalendarService(Config);
+        if (!_viewInited)
+        {
+            _view = DisplayDate ?? JDate.Today();
+            _lastDisplay = DisplayDate;
+            _viewInited = true;
+        }
+        else if (DisplayDate is { } dd && dd != _lastDisplay)
+        {
+            _view = dd;
+            _lastDisplay = dd;
+        }
+    }
+
+    private string DayClass(DayCell d)
+    {
+        var cls = new List<string>();
+        if (d.Selected) cls.Add("dp-selected");
+        if (d.CurrentMonth) cls.Add("dp-current-month");
+        if (d.PrevMonth) cls.Add("dp-prev-month");
+        if (d.NextMonth) cls.Add("dp-next-month");
+        if (d.CurrentDay) cls.Add("dp-current-day");
+        if (Config.SelectionMode == SelectionMode.Range)
+        {
+            var st = DayService.GetRangeState(d.Date, Selected, _hovered, JGranularity.Day);
+            if (st.IsStart) cls.Add("dp-range-start");
+            if (st.IsEnd) cls.Add("dp-range-end");
+            if (st.IsInRange) cls.Add("dp-in-range");
+            if (st.IsPreview && st.IsInRange) cls.Add("dp-range-preview");
+            if (st.IsStart || st.IsEnd) cls.Add("dp-selected");
+        }
+        return string.Join(" ", cls);
+    }
+
+    private JDate? TabbableDate(List<List<DayCell>> weeks)
+    {
+        var all = weeks.SelectMany(w => w).Where(d => !d.Disabled).ToList();
+        if (all.Count == 0) return null;
+        if (_focused is { } f && all.Any(d => d.Date.IsSame(f, JGranularity.Day))) return f;
+        return all.FirstOrDefault(d => d.Selected)?.Date
+               ?? all.FirstOrDefault(d => d.CurrentDay && d.CurrentMonth)?.Date
+               ?? all.FirstOrDefault(d => d.CurrentMonth)?.Date
+               ?? all[0].Date;
+    }
+
+    private void DayClicked(DayCell d)
+    {
+        if (d.Disabled) return;
+        if (Config.SelectionMode == SelectionMode.Range)
+        {
+            Selected = DateRangeUtils.UpdateSelectedRange(Selected, d.Date, JGranularity.Day);
+            _hovered = null;
+        }
+        else
+        {
+            if (d.Selected && !Config.UnSelectOnClick) return;
+            Selected = DateRangeUtils.UpdateSelected(Config.AllowMultiSelect, Selected, d.Date, JGranularity.Day);
+        }
+        OnSelect.InvokeAsync(d.Date);
+    }
+
+    private void DayHovered(DayCell d)
+    {
+        if (Config.SelectionMode != SelectionMode.Range || d.Disabled) return;
+        if (Selected.Count == 1) _hovered = d.Date;
+    }
+
+    private void ClearHover() => _hovered = null;
+
+    private void NavLeft() => _view = _view.AddMonths(-1);
+    private void NavRight() => _view = _view.AddMonths(1);
+
+    private void MonthSelected(JDate month)
+    {
+        _view = month.StartOfMonth();
+        SubMode = SubCalendarMode.Day;
+    }
+
+    private void GoToCurrent()
+    {
+        var today = JDate.Now();
+        _view = today;
+        if (Config.SelectionMode == SelectionMode.Range)
+        {
+            OnGoToCurrent.InvokeAsync();
+            return;
+        }
+        var cell = new DayCell(today) { Selected = false, CurrentDay = true };
+        DayClicked(cell);
+        OnGoToCurrent.InvokeAsync();
+    }
+
+    // ---- Keyboard navigation ----
+
+    private void OnDayKeydown(DayCell day, KeyboardEventArgs e)
+    {
+        JDate? target = e.Key is "Home" or "End" ? WeekEdge(day, e.Key) : Stepped(day, e.Key);
+        if (target is not { } t) return;
+        if (!t.IsSame(_view, JGranularity.Month))
+        {
+            _view = t;
+        }
+        _focused = t;
+        StateHasChanged();
+        if (JS is not null)
+        {
+            _ = FocusDay(t);
+        }
+    }
+
+    private JDate? Stepped(DayCell day, string key)
+    {
+        var fa = Localizer.IsPersian(Config.Locale);
+        var forward = fa ? "ArrowLeft" : "ArrowRight";
+        var back = fa ? "ArrowRight" : "ArrowLeft";
+
+        int? days = key switch
+        {
+            _ when key == forward => 1,
+            _ when key == back => -1,
+            "ArrowDown" => 7,
+            "ArrowUp" => -7,
+            _ => null
+        };
+        if (days is not null)
+        {
+            return FirstEnabled(day.Date.AddDays(days.Value), days.Value > 0 ? 1 : -1);
+        }
+
+        int? months = key switch
+        {
+            "PageDown" => 1,
+            "PageUp" => -1,
+            _ => null
+        };
+        if (months is not null)
+        {
+            return FirstEnabled(day.Date.AddMonths(months.Value), months.Value > 0 ? 1 : -1);
+        }
+        return null;
+    }
+
+    private JDate? WeekEdge(DayCell day, string key)
+    {
+        var cells = DayService.GenerateMonthArray(_view, Selected);
+        var rowIndex = cells.FindIndex(c => c.Date.IsSame(day.Date, JGranularity.Day));
+        if (rowIndex < 0) return null;
+        var week = rowIndex / 7;
+        var row = cells.Skip(week * 7).Take(7).ToList();
+        var ordered = key == "Home" ? row : row.AsEnumerable().Reverse().ToList();
+        var edge = ordered.FirstOrDefault(d => !d.Disabled);
+        return edge is not null && !edge.Date.IsSame(day.Date, JGranularity.Day) ? edge.Date : null;
+    }
+
+    private JDate? FirstEnabled(JDate candidate, int stride)
+    {
+        var date = candidate;
+        for (var i = 0; i < 62 && DayService.IsDateDisabled(date); i++)
+        {
+            date = date.AddDays(stride);
+        }
+        return DayService.IsDateDisabled(date) ? null : date;
+    }
+
+    private async Task FocusDay(JDate date)
+    {
+        var attr = Localizer.Format(date, Config.Format, Config.Locale);
+        // When the step crosses a month the grid is re-rendered, so the target
+        // button only exists in the DOM after Blazor has flushed the render.
+        await Task.Delay(50);
+        await JS.InvokeVoidAsync("focusBySelector", $"button.dp-calendar-day[data-date=\"{attr}\"]");
+    }
+}

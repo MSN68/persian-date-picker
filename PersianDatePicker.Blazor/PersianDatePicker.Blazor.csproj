@@ -5,8 +5,9 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
 
-    <!-- تنظیمات نوگت -->
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <!-- تنظیمات نوگت (publish با dotnet pack) -->
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <IncludeSymbols>true</IncludeSymbols>
     <PackageId>HosseinVatankhah.PersianDatePicker.Blazor</PackageId>
     <Version>1.0.0</Version>
     <Authors>Hossein Vatankhah</Authors>
@@ -15,15 +16,15 @@
     <PackageProjectUrl>https://github.com/hosseinvatankhah0/persian-date-picker</PackageProjectUrl>
     <RepositoryUrl>https://github.com/hosseinvatankhah0/persian-date-picker</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
-
   <ItemGroup>
-    <SupportedPlatform Include="browser" />
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.10" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.12" />
   </ItemGroup>
 
 </Project>

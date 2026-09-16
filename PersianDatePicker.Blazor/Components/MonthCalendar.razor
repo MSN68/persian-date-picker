@@ -1,0 +1,209 @@
+@using global::PersianDatePicker.Blazor.Models
+@using global::PersianDatePicker.Blazor.Services
+@using global::PersianDatePicker.Blazor.Text
+
+@{
+    var locale = Config.Locale;
+    var isRange = Config.SelectionMode == SelectionMode.Range;
+    var weeks = BuildMonths();
+}
+
+<CalendarNav Label="NavLabel"
+             IsLabelClickable="Config.EnableMonthSelector"
+             ShowLeftNav="Service.ShouldShowLeft(View)"
+             ShowRightNav="Service.ShouldShowRight(View)"
+             ShowGoToCurrent="Service.ShouldShowGoToCurrent()"
+             Locale="locale"
+             OnLeftNav="NavLeft"
+             OnRightNav="NavRight"
+             OnLabelClick="ToggleYearSelector"
+             OnGoToCurrent="GoToCurrent" />
+
+@if (isRange && Selected.Count == 1)
+{
+    <p class="dp-range-hint" aria-live="polite">@Strings.MonthRangeHint(locale)</p>
+}
+
+@if (ShowYearSelector)
+{
+    <div class="dp-year-selector-overlay">
+        <div class="dp-year-selector-list">
+            @foreach (var year in YearRange)
+            {
+                <button type="button"
+                        class="dp-year-btn @(IsCurrentYear(year) ? "dp-year-selected" : "")"
+                        aria-current="@(IsCurrentYear(year) ? "date" : null)"
+                        aria-pressed="@(IsCurrentYear(year) ? "true" : "false")"
+                        disabled="@(IsYearDisabled(year) ? true : null)"
+                        @onclick="() => SelectYear(year)">@ToDigits(year.ToString())</button>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <div class="dp-month-calendar-container @(Localizer.IsPersian(locale) ? "rtl" : "") @(isRange ? "dp-range-mode" : "")"
+         @onmouseleave="ClearHover">
+        @for (var r = 0; r < weeks.Count; r++)
+        {
+            var row = weeks[r];
+            <div class="dp-months-row">
+                @for (var c = 0; c < row.Count; c++)
+                {
+                    var m = row[c];
+                    <span class="dp-month-cell @CellClass(m)">
+                        <button type="button"
+                                class="dp-calendar-month @CellClass(m)"
+                                aria-current="@(m.CurrentMonth ? "date" : null)"
+                                aria-label="@Service.GetMonthAriaLabel(m.Date)"
+                                aria-pressed="@(m.Selected ? "true" : "false")"
+                                disabled="@(m.Disabled ? true : null)"
+                                @onclick="() => MonthClicked(m)"
+                                @onmouseover="() => MonthHovered(m)"
+                                @onfocus="() => MonthHovered(m)">
+                            @m.Text
+                        </button>
+                    </span>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public PickerConfig Config { get; set; } = new();
+    [Parameter] public JDate? DisplayDate { get; set; }
+    [Parameter] public List<JDate> Selected { get; set; } = new();
+    [Parameter] public string? Theme { get; set; }
+    [Parameter] public EventCallback<JDate> OnSelect { get; set; }
+    [Parameter] public EventCallback OnMonthSelect { get; set; }
+
+    private MonthCalendarService Service { get; set; } = new MonthCalendarService(new PickerConfig());
+    private JDate? _hovered;
+    private bool ShowYearSelector { get; set; }
+
+    private JDate _view = JDate.Today();
+    private JDate? _lastDisplay;
+    private bool _viewInited;
+    private JDate View => _view;
+
+    protected override void OnParametersSet()
+    {
+        Service = new MonthCalendarService(Config);
+        if (!_viewInited)
+        {
+            _view = DisplayDate ?? JDate.Today();
+            _lastDisplay = DisplayDate;
+            _viewInited = true;
+        }
+        else if (DisplayDate is { } dd && dd != _lastDisplay)
+        {
+            _view = dd;
+            _lastDisplay = dd;
+        }
+    }
+
+    private string NavLabel => ShowYearSelector
+        ? $"{ToDigits(YearRange[0].ToString())} – {ToDigits(YearRange[20].ToString())}"
+        : Localizer.Format(View, Config.YearFormat, Config.Locale);
+
+    private int[] YearRange => MonthCalendarService.GenerateYearRange(View);
+
+    private string ToDigits(string s) => Localizer.IsPersian(Config.Locale) ? Localizer.ToPersianDigits(s) : s;
+
+    private List<List<MonthCell>> BuildMonths()
+    {
+        var grid = Service.GenerateYear(View, Selected);
+        return grid;
+    }
+
+    private string CellClass(MonthCell m)
+    {
+        var cls = new List<string>();
+        if (m.Selected) cls.Add("dp-selected");
+        if (m.CurrentMonth) cls.Add("dp-current-month");
+        if (Config.SelectionMode == SelectionMode.Range)
+        {
+            var st = Service.GetRangeState(m.Date, Selected, _hovered, JGranularity.Month);
+            if (st.IsStart) cls.Add("dp-range-start");
+            if (st.IsEnd) cls.Add("dp-range-end");
+            if (st.IsInRange) cls.Add("dp-in-range");
+            if (st.IsPreview && st.IsInRange) cls.Add("dp-range-preview");
+            if (st.IsStart || st.IsEnd) cls.Add("dp-selected");
+        }
+        return string.Join(" ", cls);
+    }
+
+    private void MonthClicked(MonthCell m)
+    {
+        if (m.Disabled) return;
+        if (Config.SelectionMode == SelectionMode.Range)
+        {
+            Selected = DateRangeUtils.UpdateSelectedRange(Selected, m.Date, JGranularity.Month);
+            _hovered = null;
+        }
+        else
+        {
+            if (m.Selected && !Config.UnSelectOnClick) return;
+            Selected = DateRangeUtils.UpdateSelected(Config.AllowMultiSelect, Selected, m.Date, JGranularity.Month);
+        }
+        OnMonthSelect.InvokeAsync();
+        OnSelect.InvokeAsync(m.Date);
+    }
+
+    private void MonthHovered(MonthCell m)
+    {
+        if (Config.SelectionMode != SelectionMode.Range || m.Disabled) return;
+        if (Selected.Count == 1) _hovered = m.Date;
+    }
+
+    private void ClearHover() => _hovered = null;
+
+    private void NavLeft()
+    {
+        _view = _view.StartOfMonth().AddYears(ShowYearSelector ? -21 : -1);
+        StateHasChanged();
+    }
+
+    private void NavRight()
+    {
+        _view = _view.StartOfMonth().AddYears(ShowYearSelector ? 21 : 1);
+        StateHasChanged();
+    }
+
+    private void ToggleYearSelector()
+    {
+        ShowYearSelector = !ShowYearSelector;
+        StateHasChanged();
+    }
+
+    private bool IsCurrentYear(int year) => _view.Year == year;
+
+    private bool IsYearDisabled(int year) => Service.IsYearDisabled(year, _view);
+
+    private void SelectYear(int year)
+    {
+        if (IsYearDisabled(year)) return;
+        _view = _view.StartOfMonth().WithYear(year);
+        ShowYearSelector = false;
+        StateHasChanged();
+    }
+
+    private void GoToCurrent()
+    {
+        var now = JDate.Now();
+        _view = now;
+        if (Config.SelectionMode == SelectionMode.Range)
+        {
+            StateHasChanged();
+            return;
+        }
+        var cell = new MonthCell(now.StartOfMonth())
+        {
+            Text = Localizer.MonthLong(now, Config.Locale),
+            Selected = false,
+            CurrentMonth = true
+        };
+        MonthClicked(cell);
+    }
+}

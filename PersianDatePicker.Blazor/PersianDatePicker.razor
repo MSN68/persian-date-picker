@@ -1,86 +1,724 @@
 @using Microsoft.JSInterop
-@inject IJSRuntime JSRuntime
+@using global::PersianDatePicker.Blazor.Services
+@using global::PersianDatePicker.Blazor.Text
+
+@inject IJSRuntime JS
 @implements IAsyncDisposable
 
-<input type="text" 
-       @ref="inputRef" 
-       id="@Id"
-       class="@CssClass" 
-       placeholder="@Placeholder" 
-       value="@Value" />
+@{
+    var cfg = ResolvedConfig;
+    var locale = cfg.Locale;
+    var fa = Localizer.IsPersian(locale);
+    var dir = fa ? "rtl" : "ltr";
+    var isRange = cfg.SelectionMode == SelectionMode.Range;
+    var showActionBar = cfg.ShowActionButtons.GetValueOrDefault();
+}
+
+<div class="dp-date-picker dp-default @CssClass @Theme @(Inline ? "inline-picker" : "")"
+     id="@InstanceId"
+     dir="@dir"
+     @ref="hostRef">
+
+    @if (!HideInputContainer)
+    {
+        <div class="dp-input-container">
+            <label class="dp-sr-only" for="@InputId">@Placeholder</label>
+            <input id="@InputId"
+                   class="dp-picker-input"
+                   type="text"
+                   dir="@dir"
+                   autocomplete="off"
+                   spellcheck="false"
+                   placeholder="@Placeholder"
+                   value="@_currentText"
+                   disabled="@(Disabled ? true : null)"
+                   readonly="@(cfg.DisableKeypress ? true : null)"
+                   required="@(Required ? true : null)"
+                   aria-haspopup="dialog"
+                   aria-expanded="@(IsOpen ? "true" : "false")"
+                   aria-controls="@(IsOpen ? InputId + "-dialog" : null)"
+                   aria-invalid="@(MinInvalid || MaxInvalid ? "true" : null)"
+                   @ref="inputRef"
+                   @onfocus="OnInputFocus"
+                   @onblur="OnInputBlur"
+                   @onclick="OnInputClick"
+                   @onkeydown="OnInputKeydown"
+                   @oninput="OnInputEdit" />
+
+            @if (ShowCalendarIcon)
+            {
+                <button type="button"
+                        class="datepicker-button @(Disabled ? "disabled" : "")"
+                        aria-label="@Strings.OpenCalendar(locale)"
+                        aria-haspopup="dialog"
+                        aria-expanded="@(IsOpen ? "true" : "false")"
+                        aria-controls="@(IsOpen ? InputId + "-dialog" : null)"
+                        disabled="@(Disabled ? true : null)"
+                        @onclick="Open">
+                    <svg class="datepicker-icon" viewBox="0 0 24 24" fill="none"
+                         aria-hidden="true" style="width:@IconSize px;height:@IconSize px;">
+                        <rect x="3.5" y="5" width="17" height="16" rx="2.5" stroke="currentColor" stroke-width="1.6" />
+                        <path d="M3.5 9.5H20.5" stroke="currentColor" stroke-width="1.6" />
+                        <path d="M8 3V6.5M16 3V6.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                    </svg>
+                </button>
+            }
+
+            @if (MinInvalid)
+            {
+                <div class="date-error" role="alert">@string.Format(Strings.MinError(locale), JalaliText(MinDate))</div>
+            }
+            @if (MaxInvalid)
+            {
+                <div class="date-error" role="alert">@string.Format(Strings.MaxError(locale), JalaliText(MaxDate))</div>
+            }
+        </div>
+    }
+
+    @if (IsOpen || Inline)
+    {
+        <div class="dp-picker-dialog @(Inline ? "" : "") @(cfg.Dropdown && !Inline ? "dp-dropdown" : "")"
+             popover="@(Inline || cfg.Dropdown ? null : "manual")"
+             hidden="@(IsOpen || Inline ? null : true)"
+             @onclick="OnBackdropClick">
+            <div id="@InputId-dialog"
+                 class="dp-popup-container"
+                 role="dialog"
+                 tabindex="-1"
+                 aria-label="@Strings.DialogLabel(locale, Mode)"
+                 aria-modal="@(cfg.Dropdown || Inline ? null : "true")"
+                 aria-describedby="@(isRange ? InputId + "-range-hint" : null)"
+                 @ref="dialogRef"
+                 @onkeydown="OnContainerKeydown"
+                 @onclick="OnInnerClick"
+                 @onclick:stopPropagation="true">
+                <div class="dp-popup @Theme" dir="@dir">
+                    @if (!Inline && !HideInputContainer)
+                    {
+                        <div class="dp-dialog-heading" dir="@dir">
+                            <span>@Strings.DialogLabel(locale, Mode)</span>
+                            <button type="button" aria-label="@Strings.CloseCalendar(locale)" @onclick="Close">×</button>
+                        </div>
+                    }
+
+                    @if (isRange)
+                    {
+                        <div class="dp-range-progress" dir="@dir">
+                            <p class="dp-range-hint" id="@InputId-range-hint" role="status" aria-live="polite" aria-atomic="true">@RangeGuidance</p>
+                            <div class="dp-range-endpoints">
+                                <div class="dp-range-endpoint @(!Selected.Any() ? "dp-range-active" : "")">
+                                    <span>@Strings.StartDate(locale)</span>
+                                    <strong>@RangeEndpoint(0)</strong>
+                                </div>
+                                <div class="dp-range-endpoint @(Selected.Count == 1 ? "dp-range-active" : "")">
+                                    <span>@Strings.EndDate(locale)</span>
+                                    <strong>@RangeEndpoint(1)</strong>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    @switch (Mode)
+                    {
+                        case DatePickerMode.Day:
+                            <DayCalendar Config="cfg"
+                                         DisplayDate="SeedView"
+                                         Selected="Selected"
+                                         Theme="Theme"
+                                         OnSelect="d => OnDaySelect(d, JGranularity.Day)"
+                                         OnGoToCurrent="@(()=> OnGoToCurrent.InvokeAsync())" />
+                            break;
+                        case DatePickerMode.Month:
+                            <MonthCalendar Config="cfg"
+                                           DisplayDate="SeedView"
+                                           Selected="Selected"
+                                           Theme="Theme"
+                                           OnSelect="d => OnDaySelect(d, JGranularity.Month)" />
+                            break;
+                        case DatePickerMode.Time:
+                            <TimeSelect Config="cfg"
+                                        Selected="TimeValue"
+                                        OnTimeChange="OnTimeChange" />
+                            break;
+                        case DatePickerMode.DayTime:
+                            <DayCalendar Config="cfg"
+                                         DisplayDate="SeedView"
+                                         Selected="Selected"
+                                         Theme="Theme"
+                                         OnSelect="OnDayTimeDayPick"
+                                         OnGoToCurrent="@(()=> OnGoToCurrent.InvokeAsync())" />
+                            <TimeSelect Config="cfg"
+                                        Selected="TimeValue"
+                                        OnTimeChange="OnTimeChange" />
+                            break;
+                    }
+
+                    @if (showActionBar)
+                    {
+                        <div class="dp-picker-actions" dir="@dir">
+                            <div class="dp-actions-row">
+                                <button type="button" class="dp-btn dp-btn-close" @onclick="Close">@Strings.Cancel(locale)</button>
+                                <button type="button" class="dp-btn dp-btn-confirm"
+                                        disabled="@(CanConfirm ? null : true)" @onclick="Confirm">@Strings.Confirm(locale)</button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
 
 @code {
-    private ElementReference inputRef;
-    private IJSObjectReference? module;
-    private DotNetObjectReference<PersianDatePicker>? dotNetHelper;
-
-    // پارامترهای عمومی واسه استایل و آیدی
-    [Parameter] public string Id { get; set; } = Guid.NewGuid().ToString("N");
-    [Parameter] public string CssClass { get; set; } = "form-control";
-    [Parameter] public string Placeholder { get; set; } = "انتخاب تاریخ...";
-    
-    // پارامترهای اصلی بایندینگ
-    // این دوتا با هم به کاربر اجازه میدن بنویسه: @bind-Value="myDate"
+    // ---- Bindable value (string, two-way) ----
     [Parameter] public string? Value { get; set; }
     [Parameter] public EventCallback<string?> ValueChanged { get; set; }
 
-    // تنظیمات تقویم (میتونی هرچی کانفیگ داری اینجا اضافه کنی)
-    [Parameter] public string Format { get; set; } = "YYYY/MM/DD";
+    // ---- Core configuration ----
+    [Parameter] public DatePickerMode Mode { get; set; } = DatePickerMode.Day;
+    [Parameter] public SelectionMode SelectionMode { get; set; } = SelectionMode.Single;
+    [Parameter] public DatePickerLocale Locale { get; set; } = DatePickerLocale.Persian;
     [Parameter] public string? MinDate { get; set; }
     [Parameter] public string? MaxDate { get; set; }
-    
+    [Parameter] public string? MinTime { get; set; }
+    [Parameter] public string? MaxTime { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public string? Placeholder { get; set; } = "";
+    [Parameter] public bool ShowCalendarIcon { get; set; } = true;
+    [Parameter] public int IconSize { get; set; } = 20;
+
+    // ---- Presentation ----
+    [Parameter] public string? CssClass { get; set; }
+    [Parameter] public string? Theme { get; set; }
+    [Parameter] public bool Inline { get; set; }
+    [Parameter] public bool Dropdown { get; set; }
+    [Parameter] public bool HideInputContainer { get; set; }
+    [Parameter] public bool? ShowActionButtons { get; set; }
+    [Parameter] public string RangeSeparator { get; set; } = " - ";
+
+    // ---- Behavior ----
+    [Parameter] public bool OpenOnFocus { get; set; } = true;
+    [Parameter] public bool OpenOnClick { get; set; } = true;
+    [Parameter] public bool CloseOnSelect { get; set; } = true;
+    [Parameter] public bool HideOnOutsideClick { get; set; } = true;
+    [Parameter] public bool AllowMultiSelect { get; set; }
+
+    // ---- Grid ----
+    [Parameter] public WeekDay FirstDayOfWeek { get; set; } = WeekDay.Saturday;
+    [Parameter] public bool ShowNearMonthDays { get; set; } = true;
+    [Parameter] public bool ShowWeekNumbers { get; set; }
+    [Parameter] public bool EnableMonthSelector { get; set; } = true;
+    [Parameter] public bool ShowGoToCurrent { get; set; } = true;
+    [Parameter] public Func<JDate, bool>? IsDayDisabledCallback { get; set; }
+    [Parameter] public string DayBtnFormat { get; set; } = "D";
+
+    // ---- Time ----
+    [Parameter] public bool ShowSeconds { get; set; }
+    [Parameter] public bool ShowTwentyFourHours { get; set; }
+    [Parameter] public int MinutesInterval { get; set; } = 1;
+    [Parameter] public int SecondsInterval { get; set; } = 1;
+
+    // ---- Events ----
+    [Parameter] public EventCallback OnOpen { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnGoToCurrent { get; set; }
+
+    private static int _idCounter;
+    private readonly string InstanceId = "dp-blazor-" + Interlocked.Increment(ref _idCounter);
+    private string InputId => InstanceId + "-input";
+
+    private PickerConfig ResolvedConfig { get; set; } = new PickerConfig();
+    private List<JDate> Selected { get; set; } = new();
+    private bool IsOpen { get; set; }
+    private bool MinInvalid { get; set; }
+    private bool MaxInvalid { get; set; }
+    private bool _emitValue;
+    private bool _restoringFocus;
+    private bool _userEditing;
+    private bool _pendingOutsideClick;
+    private string _currentText = "";
+    private JDate TimeValue { get; set; } = JDate.Now();
+    private List<JDate> _committed = new();
+    private ElementReference inputRef;
+    private ElementReference dialogRef;
+    private ElementReference hostRef;
+    private IJSObjectReference? _js;
+    private DotNetObjectReference<PersianDatePicker>? _outsideHelper;
+
+    /// <summary>Seeds each calendar's displayed month from the current selection (or today).</summary>
+    private JDate SeedView => Selected.Count > 0 ? Selected[0] : JDate.Today();
+
+    protected override void OnParametersSet()
+    {
+        ResolvedConfig = BuildConfig();
+        ApplyValueToState(Value);
+    }
+
+    private PickerConfig BuildConfig()
+    {
+        var cfg = new PickerConfig
+        {
+            Mode = Mode,
+            SelectionMode = SelectionMode,
+            Locale = Locale,
+            Min = ParseOrNull(MinDate),
+            Max = ParseOrNull(MaxDate),
+            MinTime = ParseOrNull(MinTime),
+            MaxTime = ParseOrNull(MaxTime),
+            Dropdown = Dropdown,
+            ShowActionButtons = ShowActionButtons,
+            RangeSeparator = RangeSeparator,
+            OpenOnFocus = OpenOnFocus,
+            OpenOnClick = OpenOnClick,
+            CloseOnSelect = CloseOnSelect,
+            HideOnOutsideClick = HideOnOutsideClick,
+            AllowMultiSelect = AllowMultiSelect,
+            FirstDayOfWeek = FirstDayOfWeek,
+            ShowNearMonthDays = ShowNearMonthDays,
+            ShowWeekNumbers = ShowWeekNumbers,
+            EnableMonthSelector = EnableMonthSelector,
+            ShowGoToCurrent = ShowGoToCurrent,
+            IsDayDisabledCallback = IsDayDisabledCallback,
+            DayBtnFormat = DayBtnFormat,
+            ShowSeconds = ShowSeconds,
+            ShowTwentyFourHours = ShowTwentyFourHours,
+            MinutesInterval = MinutesInterval,
+            SecondsInterval = SecondsInterval
+        };
+        cfg.ApplyModeDefaults();
+        cfg.ApplyDerivedDefaults();
+        return cfg;
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (firstRender && _js is null)
         {
             try
             {
-                // لود کردن فایل جاوا اسکریپت از wwwroot خودِ پکیج
-                module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/PersianDatePicker.Blazor/js/datepicker-interop.js");
-                dotNetHelper = DotNetObjectReference.Create(this);
-                
-                // پکیج کردن تنظیمات برای ارسال به JS
-                var options = new 
-                {
-                    format = Format,
-                    minDate = MinDate,
-                    maxDate = MaxDate,
-                    initialValue = Value
-                };
-
-                await module.InvokeVoidAsync("init", inputRef, dotNetHelper, options);
+                _js = await JS.InvokeAsync<IJSObjectReference>("import",
+                    "./_content/PersianDatePicker.Blazor/js/persian-datepicker.js");
             }
-            catch (Exception ex)
+            catch
             {
-                // اگه JS لود نشه اینجا ارور میده
-                Console.WriteLine($"خطا در لود فایل JS تقویم: {ex.Message}");
+                // Focus management is best-effort; the picker works without JS interop.
+            }
+        }
+
+        if (_emitValue)
+        {
+            _emitValue = false;
+            await ValueChanged.InvokeAsync(InputText);
+        }
+
+        if (firstRender && IsOpen)
+        {
+            FocusDialog();
+        }
+
+        if (_pendingOutsideClick)
+        {
+            _pendingOutsideClick = false;
+            await AttachOutsideClick();
+        }
+    }
+
+    // ---- Value <-> state ----
+
+    private void ApplyValueToState(string? value)
+    {
+        Selected = ParseValueList(value);
+        if (Mode is DatePickerMode.Time or DatePickerMode.DayTime)
+        {
+            TimeValue = Selected.Count > 0 ? Selected[0] : TimeValue;
+        }
+        if (!_userEditing)
+        {
+            _currentText = InputText;
+        }
+    }
+
+    private List<JDate> ParseValueList(string? value)
+    {
+        var list = new List<JDate>();
+        if (string.IsNullOrWhiteSpace(value)) return list;
+
+        string[] parts;
+        if (ResolvedConfig.SelectionMode == SelectionMode.Range)
+        {
+            parts = value.Split(new[] { ResolvedConfig.RangeSeparator }, StringSplitOptions.RemoveEmptyEntries);
+        }
+        else
+        {
+            parts = value.Split('|', StringSplitOptions.RemoveEmptyEntries);
+        }
+
+        foreach (var raw in parts)
+        {
+            var part = raw.Trim();
+            if (part.Length == 0) continue;
+            if (DatePickerParser.TryParse(part, out var d))
+            {
+                list.Add(d);
+            }
+        }
+        return list;
+    }
+
+    private string InputText
+    {
+        get
+        {
+            if (Selected.Count == 0) return "";
+            var sep = ResolvedConfig.SelectionMode == SelectionMode.Range ? ResolvedConfig.RangeSeparator : " | ";
+            return string.Join(sep, Selected.Select(s => Localizer.Format(s, ResolvedConfig.Format, ResolvedConfig.Locale)));
+        }
+    }
+
+    private static JDate? ParseOrNull(string? value) =>
+        DatePickerParser.TryParse(value, out var d) ? d : null;
+
+    // ---- Selection ----
+
+    private void OnDaySelect(JDate date, JGranularity granularity)
+    {
+        if (Disabled) return;
+        if (ResolvedConfig.SelectionMode == SelectionMode.Range)
+        {
+            Selected = DateRangeUtils.UpdateSelectedRange(Selected, date, granularity);
+        }
+        else
+        {
+            Selected = DateRangeUtils.UpdateSelected(ResolvedConfig.AllowMultiSelect, Selected, date, granularity);
+        }
+        SyncText();
+
+        var complete = ResolvedConfig.SelectionMode != SelectionMode.Range || Selected.Count == 2;
+        if (!ResolvedConfig.ShowActionButtons.GetValueOrDefault())
+        {
+            if (complete)
+            {
+                _committed = Selected.ToList();
+                RaiseValueChange();
+            }
+            if (complete && ResolvedConfig.CloseOnSelect)
+            {
+                _ = CloseAsync();
             }
         }
     }
 
-    // این متد مستقیم از تو جاوا اسکریپت (onSelect) کال میشه
-    [JSInvokable]
-    public async Task OnDateChanged(string selectedDate)
+    private void OnDayTimeDayPick(JDate day)
     {
-        if (Value != selectedDate)
+        if (Disabled) return;
+        var merged = day.WithTime(TimeValue.Hour, TimeValue.Minute, TimeValue.Second);
+        Selected = new List<JDate> { merged };
+        TimeValue = merged;
+        SyncText();
+        if (ResolvedConfig.ShowActionButtons.GetValueOrDefault())
         {
-            Value = selectedDate;
-            await ValueChanged.InvokeAsync(selectedDate);
+            _committed = Selected.ToList();
+            RaiseValueChange();
         }
+    }
+
+    private void OnTimeChange(JDate t)
+    {
+        TimeValue = t;
+        Selected = new List<JDate> { t };
+        SyncText();
+        if (!ResolvedConfig.ShowActionButtons.GetValueOrDefault())
+        {
+            _committed = Selected.ToList();
+            RaiseValueChange();
+        }
+    }
+
+    private void SyncText()
+    {
+        if (!_userEditing)
+        {
+            _currentText = InputText;
+        }
+    }
+
+    // ---- Open / Close ----
+
+    private async Task Open()
+    {
+        if (Disabled || IsOpen || Inline) return;
+        _committed = Selected.ToList();
+        IsOpen = true;
+        await OnOpen.InvokeAsync();
+        FocusDialog();
+        // Dropdowns have no backdrop to catch outside clicks, so register a
+        // document-level listener. Deferred to after render (the dialog + host
+        // elements must exist in the DOM before the listener can query them).
+        if (cfgIsDropdown())
+        {
+            _pendingOutsideClick = true;
+        }
+    }
+
+    private bool cfgIsDropdown() => ResolvedConfig.Dropdown && ResolvedConfig.HideOnOutsideClick;
+
+    private async Task AttachOutsideClick()
+    {
+        if (_js is null) return;
+        _outsideHelper = DotNetObjectReference.Create(this);
+        await _js.InvokeVoidAsync("attachOutsideClick", hostRef, _outsideHelper);
+    }
+
+    private async Task DetachOutsideClick()
+    {
+        if (_js is null) return;
+        try
+        {
+            await _js.InvokeVoidAsync("detachOutsideClick");
+        }
+        catch
+        {
+        }
+        _outsideHelper?.Dispose();
+        _outsideHelper = null;
+    }
+
+    // Called from JS (persian-datepicker.js) when a click lands outside the picker
+    // while in dropdown mode.
+    [JSInvokable]
+    public Task OnOutsideClick() => CloseAsync();
+
+    private void Close() => _ = CloseAsync();
+
+    private async Task CloseAsync()
+    {
+        if (Inline) return;
+        if (!IsOpen) return;
+        if (ResolvedConfig.ShowActionButtons.GetValueOrDefault()
+            || ResolvedConfig.SelectionMode == SelectionMode.Range)
+        {
+            Selected = _committed.ToList();
+        }
+        SyncText();
+        IsOpen = false;
+        if (cfgIsDropdown())
+        {
+            await DetachOutsideClick();
+        }
+        await OnClose.InvokeAsync();
+        RestoreFocus();
+    }
+
+    private async Task Confirm()
+    {
+        if (Disabled || !CanConfirm) return;
+        var selection = Selected;
+        if (selection.Count == 0 && (Mode is DatePickerMode.Time or DatePickerMode.DayTime)
+            && TimeValue != default)
+        {
+            selection = new List<JDate> { TimeValue };
+            Selected = selection;
+        }
+        _committed = selection.ToList();
+        RaiseValueChange();
+        await CloseAsync();
+    }
+
+    private bool CanConfirm
+    {
+        get
+        {
+            if (ResolvedConfig.SelectionMode == SelectionMode.Range) return Selected.Count == 2;
+            if (Mode is DatePickerMode.Time or DatePickerMode.DayTime) return true;
+            return Selected.Count > 0;
+        }
+    }
+
+    private void RaiseValueChange() => _emitValue = true;
+
+    // ---- Input interactions ----
+
+    private async Task OnInputFocus()
+    {
+        if (_restoringFocus || !ResolvedConfig.OpenOnFocus) return;
+        await Open();
+    }
+
+    private void OnInputBlur()
+    {
+        _userEditing = false;
+        MinInvalid = false;
+        MaxInvalid = false;
+
+        if (string.IsNullOrWhiteSpace(_currentText))
+        {
+            Selected = new List<JDate>();
+            if (Mode is DatePickerMode.Time or DatePickerMode.DayTime) TimeValue = JDate.Now();
+        }
+        else if (DatePickerParser.TryParse(_currentText, out var parsed))
+        {
+            if (ResolvedConfig.Min is { } min && parsed.IsBefore(min, JGranularity.Day)) { MinInvalid = true; return; }
+            if (ResolvedConfig.Max is { } max && parsed.IsAfter(max, JGranularity.Day)) { MaxInvalid = true; return; }
+            Selected = new List<JDate> { parsed };
+            if (Mode is DatePickerMode.Time or DatePickerMode.DayTime) TimeValue = parsed;
+        }
+        else
+        {
+            Selected = _committed.ToList();
+            _currentText = InputText;
+        }
+        _currentText = InputText;
+        _committed = Selected.ToList();
+        RaiseValueChange();
+    }
+
+    private async Task OnInputClick()
+    {
+        if (!ResolvedConfig.OpenOnClick) return;
+        await Open();
+    }
+
+    private async Task OnInputKeydown(KeyboardEventArgs e)
+    {
+        if (e.Key is "ArrowDown" or "Enter")
+        {
+            await Open();
+        }
+        else if (e.Key == "Escape" && IsOpen)
+        {
+            await CloseAsync();
+        }
+    }
+
+    private void OnInputEdit(ChangeEventArgs e)
+    {
+        _userEditing = true;
+        var raw = e.Value?.ToString() ?? "";
+        _currentText = raw;
+        MinInvalid = false;
+        MaxInvalid = false;
+
+        if (raw.Length == 0)
+        {
+            return;
+        }
+        if (DatePickerParser.TryParse(raw, out var parsed))
+        {
+            if (ResolvedConfig.Min is { } min && parsed.IsBefore(min, JGranularity.Day))
+            {
+                MinInvalid = true;
+                return;
+            }
+            if (ResolvedConfig.Max is { } max && parsed.IsAfter(max, JGranularity.Day))
+            {
+                MaxInvalid = true;
+                return;
+            }
+            Selected = new List<JDate> { parsed };
+            if (Mode is DatePickerMode.Time or DatePickerMode.DayTime) TimeValue = parsed;
+            RaiseValueChange();
+        }
+    }
+
+    private async Task OnBackdropClick()
+    {
+        // Modal mode: a click that reaches this (i.e. not the calendar content, which
+        // stops propagation) is on the dimmed backdrop → close.
+        // Dropdown mode: this div also wraps the trigger input, so a click that opens
+        // the dropdown would bubble here and close it again. Dropdowns instead rely on
+        // the document-level outside-click listener (OnOutsideClick).
+        if (Inline || ResolvedConfig.Dropdown || !ResolvedConfig.HideOnOutsideClick) return;
+        await CloseAsync();
+    }
+
+    // A no-op marker: the popup interior stops propagation (via @onclick:stopPropagation),
+    // so a click on the calendar never reaches the backdrop handler above and never closes.
+    private void OnInnerClick() { }
+
+    // ---- Accessibility: focus trap ----
+
+    private async Task OnContainerKeydown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            await CloseAsync();
+            return;
+        }
+        if (e.Key != "Tab" || ResolvedConfig.Dropdown || Inline || HideInputContainer) return;
+        if (_js is null) return;
+        var target = await _js.InvokeAsync<ElementReference?>("trapFocus", dialogRef, e.ShiftKey);
+        if (target is { } el)
+        {
+            await el.FocusAsync();
+        }
+    }
+
+    private async void FocusDialog()
+    {
+        if (_js is null) return;
+        await Task.Delay(0);
+        await _js.InvokeVoidAsync("focusIn", dialogRef);
+    }
+
+    private void RestoreFocus()
+    {
+        _restoringFocus = true;
+        _ = inputRef.FocusAsync();
+        _restoringFocus = false;
+    }
+
+    // ---- Display helpers ----
+
+    private string RangeGuidance
+    {
+        get
+        {
+            if (!Selected.Any()) return Strings.RangeStartHint(ResolvedConfig.Locale);
+            if (Selected.Count == 1) return Strings.RangeEndHint(ResolvedConfig.Locale);
+            return Strings.RangeReadyHint(ResolvedConfig.Locale);
+        }
+    }
+
+    private string RangeEndpoint(int index)
+    {
+        if (index >= Selected.Count) return Strings.NotSelected(ResolvedConfig.Locale);
+        var value = Selected[index];
+        var format = Mode == DatePickerMode.Month ? "MMMM YYYY" : "D MMMM YYYY";
+        return Localizer.Format(value, format, ResolvedConfig.Locale);
+    }
+
+    private string JalaliText(string? value)
+    {
+        if (value is null) return "";
+        return DatePickerParser.TryParse(value, out var d)
+            ? Localizer.Format(d, "YYYY/MM/DD", ResolvedConfig.Locale)
+            : value;
     }
 
     public async ValueTask DisposeAsync()
     {
-        // وقتی کامپوننت از صفحه حذف میشه، ریسورس‌ها رو آزاد میکنیم
-        if (module is not null)
+        try
         {
-            try 
+            if (_js is not null && IsOpen && cfgIsDropdown())
             {
-                await module.InvokeVoidAsync("destroy", inputRef);
-                await module.DisposeAsync();
+                await DetachOutsideClick();
             }
-            catch { /* تو بعضی سناریوها ران‌تایم زودتر بسته میشه */ }
         }
-        dotNetHelper?.Dispose();
+        catch
+        {
+        }
+        if (_js is not null)
+        {
+            try
+            {
+                await _js.DisposeAsync();
+            }
+            catch
+            {
+                // Runtime may already be gone.
+            }
+        }
+        _outsideHelper?.Dispose();
     }
 }

@@ -1,0 +1,98 @@
+@using global::PersianDatePicker.Blazor.Services
+@using global::PersianDatePicker.Blazor.Text
+
+@{
+    var locale = Config.Locale;
+    var fa = Localizer.IsPersian(locale);
+    var svc = Service;
+    var h = Selected;
+}
+
+<div class="dp-time-select-controls" role="group" aria-label="@(fa ? "انتخاب زمان" : "Select time")">
+    <div class="dp-time-select-control dp-time-select-control-hours">
+        <button type="button" class="dp-time-select-control-up"
+                aria-label="@(fa ? "افزایش ساعت" : "Increase hours")"
+                disabled="@(svc.ShouldShowIncrease(h, "hour") ? null : true)"
+                @onclick="@(() => Step("hour", true))"></button>
+        <span class="dp-time-select-display dp-time-select-display-hours" aria-live="polite">@svc.HoursText(h)</span>
+        <button type="button" class="dp-time-select-control-down"
+                aria-label="@(fa ? "کاهش ساعت" : "Decrease hours")"
+                disabled="@(svc.ShouldShowDecrease(h, "hour") ? null : true)"
+                @onclick="@(() => Step("hour", false))"></button>
+        <span class="dp-time-select-label">@(fa ? "ساعت" : "hr")</span>
+    </div>
+
+    <span class="dp-time-select-separator" aria-hidden="true">@Config.TimeSeparator</span>
+
+    <div class="dp-time-select-control dp-time-select-control-minutes">
+        <button type="button" class="dp-time-select-control-up"
+                aria-label="@(fa ? "افزایش دقیقه" : "Increase minutes")"
+                disabled="@(svc.ShouldShowIncrease(h, "minute") ? null : true)"
+                @onclick="@(() => Step("minute", true))"></button>
+        <span class="dp-time-select-display dp-time-select-display-minutes" aria-live="polite">@svc.MinutesText(h)</span>
+        <button type="button" class="dp-time-select-control-down"
+                aria-label="@(fa ? "کاهش دقیقه" : "Decrease minutes")"
+                disabled="@(svc.ShouldShowDecrease(h, "minute") ? null : true)"
+                @onclick="@(() => Step("minute", false))"></button>
+        <span class="dp-time-select-label">@(fa ? "دقیقه" : "min")</span>
+    </div>
+
+    @if (Config.ShowSeconds)
+    {
+        <span class="dp-time-select-separator" aria-hidden="true">@Config.TimeSeparator</span>
+        <div class="dp-time-select-control dp-time-select-control-seconds">
+            <button type="button" class="dp-time-select-control-up"
+                    aria-label="@(fa ? "افزایش ثانیه" : "Increase seconds")"
+                    disabled="@(svc.ShouldShowIncrease(h, "second") ? null : true)"
+                    @onclick="@(() => Step("second", true))"></button>
+            <span class="dp-time-select-display dp-time-select-display-seconds" aria-live="polite">@svc.SecondsText(h)</span>
+            <button type="button" class="dp-time-select-control-down"
+                    aria-label="@(fa ? "کاهش ثانیه" : "Decrease seconds")"
+                    disabled="@(svc.ShouldShowDecrease(h, "second") ? null : true)"
+                    @onclick="@(() => Step("second", false))"></button>
+            <span class="dp-time-select-label">@(fa ? "ثانیه" : "sec")</span>
+        </div>
+    }
+
+    @if (!Config.ShowTwentyFourHours)
+    {
+        <div class="dp-time-select-control dp-time-select-control-meridiem">
+            <button type="button" class="dp-time-select-control-up"
+                    aria-label="@(fa ? "تغییر قبل/بعد از ظهر" : "Toggle meridiem")"
+                    disabled="@(svc.ShouldShowToggleMeridiem(h) ? null : true)"
+                    @onclick="ToggleMeridiem"></button>
+            <span class="dp-time-select-display dp-time-select-display-meridiem" aria-live="polite">@svc.Meridiem(h)</span>
+            <button type="button" class="dp-time-select-control-down"
+                    aria-label="@(fa ? "تغییر قبل/بعد از ظهر" : "Toggle meridiem")"
+                    disabled="@(svc.ShouldShowToggleMeridiem(h) ? null : true)"
+                    @onclick="ToggleMeridiem"></button>
+            <span class="dp-time-select-label">&nbsp;</span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public PickerConfig Config { get; set; } = new();
+    [Parameter] public JDate Selected { get; set; } = JDate.Now();
+    [Parameter] public EventCallback<JDate> OnTimeChange { get; set; }
+
+    private TimeSelectService Service { get; set; } = new TimeSelectService(new PickerConfig());
+
+    protected override void OnParametersSet()
+    {
+        // Config is a [Parameter], so the service must (re)read it after the host sets it.
+        Service = new TimeSelectService(Config);
+    }
+
+    private void Step(string unit, bool increase)
+    {
+        Selected = Service.Step(Selected, increase, unit);
+        _ = OnTimeChange.InvokeAsync(Selected);
+    }
+
+    private void ToggleMeridiem()
+    {
+        Selected = Service.ToggleMeridiem(Selected);
+        _ = OnTimeChange.InvokeAsync(Selected);
+    }
+}

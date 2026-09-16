@@ -1,0 +1,144 @@
+@page "/pickers"
+
+<PageTitle>Persian DatePicker</PageTitle>
+
+<h1>Persian (Jalali) DatePicker</h1>
+<p class="text-muted">
+    A port of the Angular <code>dp-date-picker</code> to Blazor. Every feature below is driven by
+    <code>PersianDatePicker.Blazor</code>.
+</p>
+
+<div class="d-flex flex-wrap gap-4 my-4">
+    <div class="card" style="max-width: 360px;">
+        <div class="card-header">Single day (Persian)</div>
+        <div class="card-body">
+            <PersianDatePicker @bind-Value="singleDate" Placeholder="انتخاب تاریخ..." />
+            <hr />
+            <div class="small">Bound value: <code>@(string.IsNullOrEmpty(singleDate) ? "(empty)" : singleDate)</code></div>
+        </div>
+    </div>
+
+    <div class="card" style="max-width: 360px;">
+        <div class="card-header">Day range (Persian)</div>
+        <div class="card-body">
+            <PersianDatePicker @bind-Value="rangeValue"
+                               SelectionMode="SelectionMode.Range"
+                               Placeholder="بازه تاریخ را انتخاب کنید..." />
+            <hr />
+            <div class="small">Bound value: <code>@(string.IsNullOrEmpty(rangeValue) ? "(empty)" : rangeValue)</code></div>
+        </div>
+    </div>
+
+    <div class="card" style="max-width: 360px;">
+        <div class="card-header">English locale</div>
+        <div class="card-body">
+            <PersianDatePicker @bind-Value="enDate"
+                               Locale="DatePickerLocale.English"
+                               Placeholder="Choose a date..." />
+            <hr />
+            <div class="small">Bound value: <code>@(string.IsNullOrEmpty(enDate) ? "(empty)" : enDate)</code></div>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex flex-wrap gap-4 my-4">
+    <div class="card" style="max-width: 360px;">
+        <div class="card-header">Month</div>
+        <div class="card-body">
+            <PersianDatePicker @bind-Value="monthValue" Mode="DatePickerMode.Month" Placeholder="انتخاب ماه..." />
+            <hr />
+            <div class="small">Bound value: <code>@(string.IsNullOrEmpty(monthValue) ? "(empty)" : monthValue)</code></div>
+        </div>
+    </div>
+
+    <div class="card" style="max-width: 360px;">
+        <div class="card-header">Month range</div>
+        <div class="card-body">
+            <PersianDatePicker @bind-Value="monthRangeValue"
+                               Mode="DatePickerMode.Month"
+                               SelectionMode="SelectionMode.Range"
+                               Placeholder="بازه ماه..." />
+            <hr />
+            <div class="small">Bound value: <code>@(string.IsNullOrEmpty(monthRangeValue) ? "(empty)" : monthRangeValue)</code></div>
+        </div>
+    </div>
+
+    <div class="card" style="max-width: 360px;">
+        <div class="card-header">Time</div>
+        <div class="card-body">
+            <PersianDatePicker @bind-Value="timeValue" Mode="DatePickerMode.Time" Placeholder="انتخاب ساعت..." />
+            <hr />
+            <div class="small">Bound value: <code>@(string.IsNullOrEmpty(timeValue) ? "(empty)" : timeValue)</code></div>
+        </div>
+    </div>
+
+    <div class="card" style="max-width: 360px;">
+        <div class="card-header">Day &amp; time</div>
+        <div class="card-body">
+            <PersianDatePicker @bind-Value="dayTimeValue" Mode="DatePickerMode.DayTime" Placeholder="تاریخ و ساعت..." />
+            <hr />
+            <div class="small">Bound value: <code>@(string.IsNullOrEmpty(dayTimeValue) ? "(empty)" : dayTimeValue)</code></div>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex flex-wrap gap-4 my-4">
+    <div class="card" style="max-width: 360px;">
+        <div class="card-header">Min / Max bounds</div>
+        <div class="card-body">
+            <PersianDatePicker @bind-Value="boundedDate"
+                               MinDate="1403/01/01"
+                               MaxDate="1404/12/29"
+                               Placeholder="بین ۱۴۰۳/۰۱/۰۱ تا ۱۴۰۴/۱۲/۲۹..." />
+            <hr />
+            <div class="small">Bound value: <code>@(string.IsNullOrEmpty(boundedDate) ? "(empty)" : boundedDate)</code></div>
+        </div>
+    </div>
+
+    <div class="card" style="max-width: 360px;">
+        <div class="card-header">Dropdown (anchored below input)</div>
+        <div class="card-body" style="position: relative;">
+            <PersianDatePicker @bind-Value="dropdownDate"
+                               Dropdown="true"
+                               OpenOnFocus="false"
+                               Placeholder="باز کردن با کلیک..." />
+            <hr />
+            <div class="small">Bound value: <code>@(string.IsNullOrEmpty(dropdownDate) ? "(empty)" : dropdownDate)</code></div>
+        </div>
+    </div>
+
+    <div class="card" style="max-width: 360px;">
+        <div class="card-header">Hide Fridays (custom callback)</div>
+        <div class="card-body">
+            <PersianDatePicker @bind-Value="noFriday"
+                               IsDayDisabledCallback="d => d.NetDayOfWeek == System.DayOfWeek.Friday"
+                               Placeholder="روز پنجشنبه انتخاب نمی‌شود..." />
+            <hr />
+            <div class="small">Bound value: <code>@(string.IsNullOrEmpty(noFriday) ? "(empty)" : noFriday)</code></div>
+        </div>
+    </div>
+</div>
+
+<div class="my-4">
+    <div class="card" style="max-width: 360px; display: inline-block;">
+        <div class="card-header">Inline calendar (no input)</div>
+        <div class="card-body">
+            <PersianDatePicker @bind-Value="inlineDate" Inline="true" />
+            <div class="small mt-2">Bound value: <code>@(string.IsNullOrEmpty(inlineDate) ? "(empty)" : inlineDate)</code></div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string? singleDate;
+    private string? rangeValue;
+    private string? enDate;
+    private string? monthValue;
+    private string? monthRangeValue;
+    private string? timeValue;
+    private string? dayTimeValue;
+    private string? boundedDate;
+    private string? dropdownDate;
+    private string? noFriday;
+    private string? inlineDate;
+}

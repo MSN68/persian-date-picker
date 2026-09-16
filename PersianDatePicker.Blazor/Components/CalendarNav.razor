@@ -1,0 +1,66 @@
+@using global::PersianDatePicker.Blazor.Text
+
+<div class="dp-calendar-nav-container">
+    <div class="dp-nav-header" aria-live="polite" aria-atomic="true">
+        @if (IsLabelClickable)
+        {
+            <button type="button"
+                    class="dp-nav-header-btn"
+                    title="@Strings.ChooseMonthYear(Locale)"
+                    aria-label="@(Label + ", " + Strings.ChooseMonthYear(Locale))"
+                    @onclick="@(()=>OnLabelClick.InvokeAsync())">
+                <span>@DisplayLabel</span>
+                <span class="dp-nav-header-chevron" aria-hidden="true"></span>
+            </button>
+        }
+        else
+        {
+            <span>@DisplayLabel</span>
+        }
+    </div>
+
+    <div class="dp-nav-btns-container">
+        <div class="dp-calendar-nav-container-left">
+            <button type="button"
+                    class="dp-calendar-nav-left"
+                    title="@Strings.Prev(Locale)"
+                    aria-label="@Strings.Prev(Locale)"
+                    @onclick="@(()=> OnLeftNav.InvokeAsync())"
+                    disabled="@(ShowLeftNav ? null : true)"></button>
+        </div>
+
+        @if (ShowGoToCurrent)
+        {
+            <button type="button"
+                    class="dp-current-location-btn"
+                    title="@Strings.GoToTodayTitle(Locale)"
+                    aria-label="@Strings.GoToTodayTitle(Locale)"
+                    @onclick="@(()=>OnGoToCurrent.InvokeAsync())">@Strings.Today(Locale)</button>
+        }
+
+        <div class="dp-calendar-nav-container-right">
+            <button type="button"
+                    class="dp-calendar-nav-right"
+                    title="@Strings.Next(Locale)"
+                    aria-label="@Strings.Next(Locale)"
+                    @onclick="@(()=>OnRightNav.InvokeAsync())"
+                    disabled="@(ShowRightNav ? null : true)"></button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public bool IsLabelClickable { get; set; }
+    [Parameter] public bool ShowLeftNav { get; set; } = true;
+    [Parameter] public bool ShowRightNav { get; set; } = true;
+    [Parameter] public bool ShowGoToCurrent { get; set; } = true;
+    [Parameter] public DatePickerLocale Locale { get; set; } = DatePickerLocale.Persian;
+
+    [Parameter] public EventCallback OnLeftNav { get; set; }
+    [Parameter] public EventCallback OnRightNav { get; set; }
+    [Parameter] public EventCallback OnLabelClick { get; set; }
+    [Parameter] public EventCallback OnGoToCurrent { get; set; }
+
+    private string DisplayLabel => Localizer.IsPersian(Locale) ? Localizer.ToPersianDigits(Label) : Label;
+}

@@ -1,69 +1,68 @@
 # Persian DatePicker for Blazor 📅
 
-A lightweight, highly customizable, and easy-to-use Persian (Jalali) DatePicker component for Blazor (WebAssembly & Server), built on top of the powerful Vanilla JS library.
+A self-contained, fully-managed Persian (Jalali) DatePicker component for Blazor (WebAssembly & Server) — **no external JS dependency required**. A faithful port of [PersianDatePicker](https://github.com/hosseinvatankhah0/persian-date-picker) (Angular) written entirely in C#/Razor.
 
 ## Features
-* 🚀 Support for both Blazor WebAssembly and Blazor Server.
-* 🔄 Seamless two-way data binding (`@bind-Value`).
-* 🎨 Fully customizable CSS.
-* ⚡ Lightweight and fast.
-* 📅 Supports Min/Max dates, custom formats, and initial values.
+
+* **4 selection modes** — Day, Month, Time, Day+Time (`Mode="DayTime"`)
+* **Range selection** — `SelectionMode="Range"` with live preview band and range guidance
+* **Modal, dropdown & inline modes** — centered modal, input-anchored dropdown, or inline calendar
+* **Two-way binding** — `@bind-Value` (single date, range, or time)
+* **12/24-hour time** — with meridiem toggle, configurable intervals, min/max time bounds
+* **Locale support** — Persian (`fa`, digits + labels) and English (`en`)
+* **Min/Max bounds** — Jalali date strings auto-parsed; error messages shown in the active locale
+* **Custom disabled dates** — `IsDayDisabledCallback` (e.g. disable Fridays)
+* **Keyboard navigation** — arrow/page keys, Home/End, Escape, Tab focus trap inside modal
+* **Reactive Forms & ngModel-style** — implements `ControlValueAccessor` equivalent (two-way binding)
+* **NuGet-publishable** — `<GeneratePackageOnBuild>true</GeneratePackageOnBuild>` (or `dotnet pack`)
 
 ## Installation
 
-Install the package via NuGet Package Manager Console:
 ```bash
-Install-Package HosseinVatankhah.PersianDatePicker.Blazor
-
-Or via .NET CLI:
-
 dotnet add package HosseinVatankhah.PersianDatePicker.Blazor
+```
 
-Setup
-After installing the package, you need to add the required CSS and JS files to your project.
+## Usage
 
-1. Add Static Assets
-Add the following lines to your wwwroot/index.html (Blazor WebAssembly) or Components/App.razor (Blazor Server), inside the <head> and <body> tags:
-
-In <head>:
-
-<link href="_content/HosseinVatankhah.PersianDatePicker.Blazor/css/persian-datepicker.min.css" rel="stylesheet" />
-
-At the end of <body> (before Blazor script):
-
-<script src="_content/HosseinVatankhah.PersianDatePicker.Blazor/js/persian-datepicker.min.js"></script>
-(Note: adjust the paths above if your file names are different in the wwwroot folder).
-
-2. Add _Imports.razor
-Add the following using statement to your _Imports.razor file:
-
+```razor
 @using PersianDatePicker.Blazor
 
-Usage
-You can now use the component anywhere in your Blazor pages.
+<!-- Single day, Persian locale -->
+<PersianDatePicker @bind-Value="myDate" />
 
-Basic Example:
+<!-- Day range -->
+<PersianDatePicker @bind-Value="range" SelectionMode="SelectionMode.Range" />
 
-<PersianDatePicker @bind-Value="mySelectedDate" Placeholder="تاریخ را انتخاب کنید..."/>
+<!-- Month picker -->
+<PersianDatePicker @bind-Value="month" Mode="DatePickerMode.Month" />
 
-<p>Selected Date: @mySelectedDate</p>
+<!-- Time picker, 24-hour -->
+<PersianDatePicker @bind-Value="time" Mode="DatePickerMode.Time" ShowTwentyFourHours="true" />
 
-@code {
-    private string mySelectedDate;
-}
+<!-- Day + time combined -->
+<PersianDatePicker @bind-Value="dayTime" Mode="DatePickerMode.DayTime" />
 
-Advanced Example (Min/Max and Formatting):
+<!-- With bounds & custom callback -->
+<PersianDatePicker @bind-Value="bounded"
+                    MinDate="1403/01/01"
+                    MaxDate="1404/12/29"
+                    IsDayDisabledCallback="d => d.NetDayOfWeek == DayOfWeek.Friday" />
 
-<PersianDatePicker @bind-Value="eventDate" CssClass="my-custom-input-class" Format="YYYY/MM/DD" MaxDate="1405/12/29" MinDate="1402/01/01"/>
+<!-- Dropdown mode (anchored below input) -->
+<PersianDatePicker @bind-Value="dropdown" Dropdown="true" OpenOnFocus="false" />
 
-Contributing
-Contributions are always welcome! Please feel free to submit a Pull Request.
+<!-- Inline calendar (no input) -->
+<PersianDatePicker @bind-Value="inline" Inline="true" />
+```
 
-License
-This project is licensed under the MIT License.
+## Sample
 
+See `PersianDatePicker.Sample` — a Blazor WebAssembly project referencing this library with demos of every mode above at `/pickers`.
 
+## Notes
 
+* The picker uses .NET `PersianCalendar` for all Jalali math (no `jalali-moment` / JS interop).  
+* Free-text input is parsed and validated live; min/max errors surface as the user types, with messages localized to the active locale.
+* Range values are emitted as `from {rangeSeparator} to` (default ` - `). Multi-select is unsupported in range mode.
 
-
-
+License: MIT

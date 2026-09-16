@@ -298,7 +298,7 @@
             try
             {
                 _js = await JS.InvokeAsync<IJSObjectReference>("import",
-                    "./_content/PersianDatePicker.Blazor/js/persian-datepicker.js");
+                    "./_content/HosseinVatankhah.PersianDatePicker.Blazor/js/persian-datepicker.js");
             }
             catch
             {
@@ -467,7 +467,7 @@
     {
         if (_js is null) return;
         _outsideHelper = DotNetObjectReference.Create(this);
-        await _js.InvokeVoidAsync("attachOutsideClick", hostRef, _outsideHelper);
+        await _js.InvokeVoidAsync("attachOutsideClick", InstanceId, _outsideHelper);
     }
 
     private async Task DetachOutsideClick()
@@ -647,18 +647,15 @@
         }
         if (e.Key != "Tab" || ResolvedConfig.Dropdown || Inline || HideInputContainer) return;
         if (_js is null) return;
-        var target = await _js.InvokeAsync<ElementReference?>("trapFocus", dialogRef, e.ShiftKey);
-        if (target is { } el)
-        {
-            await el.FocusAsync();
-        }
+        // JS resolves the dialog and moves focus to the edge element itself.
+        await _js.InvokeVoidAsync("trapFocus", InputId + "-dialog", e.ShiftKey);
     }
 
     private async void FocusDialog()
     {
         if (_js is null) return;
         await Task.Delay(0);
-        await _js.InvokeVoidAsync("focusIn", dialogRef);
+        await _js.InvokeVoidAsync("focusIn", InputId + "-dialog");
     }
 
     private void RestoreFocus()

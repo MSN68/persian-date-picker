@@ -109,6 +109,7 @@ else
     private JDate? _lastDisplay;
     private bool _viewInited;
     private JDate View => _view;
+    private IJSObjectReference? _js;
 
     protected override void OnParametersSet()
     {
@@ -278,10 +279,23 @@ else
 
     private async Task FocusDay(JDate date)
     {
-        var attr = Localizer.Format(date, Config.Format, Config.Locale);
-        // When the step crosses a month the grid is re-rendered, so the target
-        // button only exists in the DOM after Blazor has flushed the render.
-        await Task.Delay(50);
-        await JS.InvokeVoidAsync("focusBySelector", $"button.dp-calendar-day[data-date=\"{attr}\"]");
+        if (JS is null) return;
+        try
+        {
+            // focusBySelector is a module export (persian-datepicker.js), not a global,
+            // so it must be called through an imported module reference.
+            _js ??= await JS.InvokeAsync<IJSObjectReference>("import",
+                "./_content/HosseinVatankhah.PersianDatePicker.Blazor/js/persian-datepicker.js");
+
+            var attr = Localizer.Format(date, Config.Format, Config.Locale);
+            // When the step crosses a month the grid is re-rendered, so the target
+            // button only exists in the DOM after Blazor has flushed the render.
+            await Task.Delay(50);
+            await _js.InvokeVoidAsync("focusBySelector", $"button.dp-calendar-day[data-date=\"{attr}\"]");
+        }
+        catch
+        {
+            // Focus movement is best-effort; keyboard selection still works without it.
+        }
     }
 }
